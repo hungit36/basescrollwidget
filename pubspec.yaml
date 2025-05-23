@@ -1,6 +1,6 @@
 name: basescrollview
 description: BaseScrollView handle scroll to top or scroll to bottom.
-version: 0.0.8
+version: 0.0.9
 homepage: https://github.com/hungit36/basescrollview
 
 environment:

@@ -38,12 +38,14 @@ class _MyAppState extends State<MyApp> {
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
       setState(() {
         _isLoading = false;
+        LoadingStatusStream.instance.update(false);
       });
     });
   }
 
   void _getData({bool isReload = true}) {
     if (_items.length == _maxRow && !isReload) return;
+    LoadingStatusStream.instance.update(true);
     _isLoading = isReload;
     if (isReload) {
       _index = 1;
@@ -83,7 +85,6 @@ class _MyAppState extends State<MyApp> {
           onRefresh: _onScrollToTop,
           onLoadMore: _onScrollToBottom,
           onScrollUpdate: _onScrollUpdate,
-          isLoading: true,
           child: LayoutBuilder(
             builder: (context, constraints) => ListView.builder(
               padding: const EdgeInsets.all(16.0),

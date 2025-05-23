@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -9,14 +10,14 @@ enum LoadingStyle {rotate, opacity, rotateAndopacity}
 class BaseScrollView extends StatefulWidget {
   const BaseScrollView({
     super.key,
+    this.backgroundColor = Colors.black38,
     required this.child,
     this.onRefresh,
     this.onScrollStart,
     this.onLoadMore,
     this.onScrollUpdate,
-    required this.isLoading,
-    this.indicatorColor = Colors.black54, 
-    this.indicatorActiveColor = Colors.black54, 
+    this.indicatorColor = Colors.white54, 
+    this.indicatorActiveColor = Colors.white, 
     this.isEnableRefreshIndicator = true,
     this.imageLoading = '',
     this.loadingString,
@@ -24,6 +25,8 @@ class BaseScrollView extends StatefulWidget {
     this.style = LoadingStyle.rotate,
     this.angle = pi * 2,
   });
+
+  final Color backgroundColor;
 
   final LoadingStyle style;
 
@@ -43,7 +46,6 @@ class BaseScrollView extends StatefulWidget {
 
   final Color indicatorActiveColor;
   
-  final bool isLoading;
   final Widget child;
   final VoidCallback? onScrollStart;
   final VoidCallback? onRefresh;
@@ -86,47 +88,55 @@ class _BaseScrollViewtate extends State<BaseScrollView> {
 
   @override
   Widget build(BuildContext context) {
-    return _MyLoadingView(
-      loadingString: widget.loadingString,
-      loadingStringStyle: widget.loadingStringStyle,
-      imagePath: widget.imageLoading,
-      angle: widget.angle,
-      indicatorActiveColor: widget.indicatorActiveColor,
-      isLoading: widget.isLoading,
-      style: widget.style,
-      indicatorColor: widget.indicatorColor,
-      child: widget.isEnableRefreshIndicator ? RefreshIndicator(
-        color: widget.indicatorColor,
-        onRefresh: () async {
-          widget.onRefresh?.call();
-        },
-        notificationPredicate: (notification) {
-          if (notification is ScrollStartNotification) {
-            widget.onScrollStart?.call();
-          } else if (notification is ScrollUpdateNotification && notification.dragDetails != null) {
-            _isUserScroll = true;
-              _onUpdateScroll(notification.metrics);
-          } else if (notification is ScrollEndNotification) {
-            _onEndScroll(notification.metrics);
-          }
-          return true;
-        },
-        displacement: 50,
-        child: widget.child,
-      ) : NotificationListener(
-        onNotification: (scrollNotification) {
-          if (scrollNotification is ScrollStartNotification) {
-            widget.onScrollStart?.call();
-          } else if (scrollNotification is ScrollUpdateNotification && scrollNotification.dragDetails != null) {
-            _isUserScroll = true;
-            _onUpdateScroll(scrollNotification.metrics);
-          } else if (scrollNotification is ScrollEndNotification) {
-            _onEndScroll(scrollNotification.metrics);
-          }
-          return true;
-        },
-        child: widget.child,
-      ),
+    return StreamBuilder<bool>(
+      stream: LoadingStatusStream.instance.stream,
+      initialData: LoadingStatusStream.instance.last,
+      builder: (context, snapshot) {
+        final isLoading = snapshot.data ?? false;
+        return _MyLoadingView(
+          backgroundColor: widget.backgroundColor,
+          loadingString: widget.loadingString,
+          loadingStringStyle: widget.loadingStringStyle,
+          imagePath: widget.imageLoading,
+          angle: widget.angle,
+          indicatorActiveColor: widget.indicatorActiveColor,
+          isLoading: isLoading,
+          style: widget.style,
+          indicatorColor: widget.indicatorColor,
+          child: widget.isEnableRefreshIndicator ? RefreshIndicator(
+            color: widget.indicatorColor,
+            onRefresh: () async {
+              widget.onRefresh?.call();
+            },
+            notificationPredicate: (notification) {
+              if (notification is ScrollStartNotification) {
+                widget.onScrollStart?.call();
+              } else if (notification is ScrollUpdateNotification && notification.dragDetails != null) {
+                _isUserScroll = true;
+                  _onUpdateScroll(notification.metrics);
+              } else if (notification is ScrollEndNotification) {
+                _onEndScroll(notification.metrics);
+              }
+              return true;
+            },
+            displacement: 50,
+            child: widget.child,
+          ) : NotificationListener(
+            onNotification: (scrollNotification) {
+              if (scrollNotification is ScrollStartNotification) {
+                widget.onScrollStart?.call();
+              } else if (scrollNotification is ScrollUpdateNotification && scrollNotification.dragDetails != null) {
+                _isUserScroll = true;
+                _onUpdateScroll(scrollNotification.metrics);
+              } else if (scrollNotification is ScrollEndNotification) {
+                _onEndScroll(scrollNotification.metrics);
+              }
+              return true;
+            },
+            child: widget.child,
+          ),
+        );
+      }
     );
   }
 
@@ -142,17 +152,18 @@ class _MyLoadingView extends StatelessWidget {
   final LoadingStyle style;
   final Color indicatorActiveColor;
   final double angle;
+  final Color backgroundColor;
 
   const _MyLoadingView({
-    super.key,
     this.imagePath = '',
     required this.isLoading,
     required this.child,
-    this.indicatorColor = Colors.black54,
+    this.backgroundColor = Colors.black38,
+    this.indicatorColor = Colors.white54,
      this.loadingString,
     this.loadingStringStyle,
     this.style = LoadingStyle.rotate,
-    this.indicatorActiveColor = Colors.black,
+    this.indicatorActiveColor = Colors.white,
     this.angle = pi * 2,
   });
 
@@ -167,7 +178,7 @@ class _MyLoadingView extends StatelessWidget {
             if (isLoading)
               Positioned.fill(
                 child: ColoredBox(
-                  color: Colors.white.withOpacity(0.85),
+                  color: backgroundColor,
                   child: Center(
                     child: style == LoadingStyle.rotateAndopacity ? _MyLoadingIconRotateAndFadeOpacity(
                       imagePath: imagePath, 
@@ -446,5 +457,25 @@ class _WidgetState extends State<_MyLoadingIconFadeOpacity> with TickerProviderS
         ],
       ),
     );
+  }
+}
+
+
+
+class LoadingStatusStream {
+  static final LoadingStatusStream instance = LoadingStatusStream();
+
+  LoadingStatusStream();
+
+  final _controller = StreamController<bool>.broadcast();
+
+  Stream<bool> get stream => _controller.stream;
+
+  bool _last = true;
+  bool? get last => _last;
+
+  void update(bool value) {
+    _last = value;
+    _controller.add(value);
   }
 }
